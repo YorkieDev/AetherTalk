@@ -5,12 +5,14 @@ AetherTalk isn't just another chat interface – it's your portal to the AI univ
 
 
 ## 📸 Screenshots! 
+<img width="1290" alt="image" src="https://github.com/YorkieDev/AetherTalk/assets/42919623/794a6597-0d5b-461f-8ae5-0978163af2c8">
 
-<img width="1728" alt="image" src="https://github.com/YorkieDev/AetherTalk/assets/42919623/43190781-67e6-4d11-b7bd-09f495e4d975">
 **light and dark mode!!!**
-<img width="1728" alt="image" src="https://github.com/YorkieDev/AetherTalk/assets/42919623/482ddddc-8496-47b9-8dc7-f9ce96947d74">
+<img width="1722" alt="image" src="https://github.com/YorkieDev/AetherTalk/assets/42919623/e813a39b-e0e0-4366-81ae-fa24dadece8b">
+
 **waoh RAG!!!**
-<img width="1723" alt="image" src="https://github.com/YorkieDev/AetherTalk/assets/42919623/0b9221a9-cd01-4d8c-a503-f9efbc13131f">
+<img width="1724" alt="image" src="https://github.com/YorkieDev/AetherTalk/assets/42919623/c6778dec-6e09-47d7-ae13-7771a2ca5125">
+
 
 
 
