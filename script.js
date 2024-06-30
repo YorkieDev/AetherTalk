@@ -84,35 +84,52 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function addMessage(sender, message) {
         const messageElement = document.createElement('div');
-        messageElement.classList.add('message', `${sender}-message`);
-        messageElement.style.fontSize = `${currentFontSize}px`;
-    
-        const emojiSpan = document.createElement('span');
-        emojiSpan.classList.add('message-emoji');
-        emojiSpan.textContent = sender === 'user' ? '👤' : '🤖';
-    
-        const contentDiv = document.createElement('div');
-        contentDiv.classList.add('message-content');
-        contentDiv.innerHTML = formatMessage(message);
-    
+    messageElement.classList.add('message', `${sender}-message`);
+    messageElement.style.fontSize = `${currentFontSize}px`;
+
+    const emojiSpan = document.createElement('span');
+    emojiSpan.classList.add('message-emoji');
+    emojiSpan.textContent = sender === 'user' ? '👤' : '🤖';
+
+    const messageBubble = document.createElement('div');
+    messageBubble.classList.add('message-bubble');
+
+    const contentDiv = document.createElement('div');
+    contentDiv.classList.add('message-content');
+    contentDiv.innerHTML = formatMessage(message);
+
+    messageBubble.appendChild(contentDiv);
+
+    if (sender === 'bot') {
+        const botMessageContainer = document.createElement('div');
+        botMessageContainer.classList.add('bot-message-container');
+
+        const botContentControls = document.createElement('div');
+        botContentControls.classList.add('bot-content-controls');
+
+        botContentControls.appendChild(messageBubble);
+
+        const ttsControls = document.createElement('div');
+        ttsControls.classList.add('tts-controls');
+        ttsControls.innerHTML = `
+            <button class="tts-button play-pause">
+                <i class="fas fa-play"></i> Speak
+            </button>
+            <button class="tts-button restart" disabled>
+                <i class="fas fa-redo"></i> Restart
+            </button>
+        `;
+        botContentControls.appendChild(ttsControls);
+
+        botMessageContainer.appendChild(emojiSpan);
+        botMessageContainer.appendChild(botContentControls);
+        messageElement.appendChild(botMessageContainer);
+    } else {
+        messageElement.appendChild(messageBubble);
         messageElement.appendChild(emojiSpan);
-        messageElement.appendChild(contentDiv);
-    
-        if (sender === 'bot') {
-            const ttsControls = document.createElement('div');
-            ttsControls.classList.add('tts-controls');
-            ttsControls.innerHTML = `
-                <button class="tts-button play-pause">
-                    <i class="fas fa-play"></i> Speak
-                </button>
-                <button class="tts-button restart" disabled>
-                    <i class="fas fa-redo"></i> Restart
-                </button>
-            `;
-            messageElement.appendChild(ttsControls);
-        }
-    
-        chatMessages.appendChild(messageElement);
+    }
+
+    chatMessages.appendChild(messageElement);
     
         // Add copy buttons and apply syntax highlighting after adding to DOM
         addCopyButtons();
