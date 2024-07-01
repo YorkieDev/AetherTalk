@@ -165,45 +165,50 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function formatMessage(message) {
+        // Protect LaTeX expressions
+        const mathExpressions = [];
+        let protectedMessage = message.replace(/\$\$([\s\S]*?)\$\$|\$((?:\\.|[^\$])*)\$/g, (match, display, inline, offset) => {
+            const placeholder = `%%MATH_EXPR_${mathExpressions.length}%%`;
+            mathExpressions.push({placeholder, latex: match});
+            return placeholder;
+        });
+    
+        // Process Markdown
         marked.setOptions({
             gfm: true,
             breaks: true,
             sanitize: false,
             headerIds: false,
-            mangle: false,
-            highlight: function(code, lang) {
-                if (Prism.languages[lang]) {
-                    return Prism.highlight(code, Prism.languages[lang], lang);
-                }
-                return code;
+            mangle: false
+        });
+        let formattedMessage = marked.parse(protectedMessage);
+    
+        // Replace placeholders with LaTeX
+        mathExpressions.forEach(({placeholder, latex}) => {
+            formattedMessage = formattedMessage.replace(placeholder, latex);
+        });
+    
+        // Render LaTeX
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = formattedMessage;
+        renderMathInElement(tempDiv, {
+            delimiters: [
+                {left: "$$", right: "$$", display: true},
+                {left: "$", right: "$", display: false},
+                {left: "\\(", right: "\\)", display: false},
+                {left: "\\[", right: "\\]", display: true}
+            ],
+            throwOnError: false,
+            strict: false,
+            trust: true,
+            macros: {
+                "\\quad": "\\;\\;",
+                "\\overset": "\\stackrel",
+                "\\rightarrow": "\\to"
             }
         });
     
-        // Replace LaTeX expressions with placeholders
-        const latexExpressions = [];
-        let latexCounter = 0;
-        const latexReplacedMessage = message.replace(/\$\$([\s\S]*?)\$\$|\$((?:\\.|[^\$])*)\$/g, (match, display, inline) => {
-            const placeholder = `%%LATEX_${latexCounter}%%`;
-            latexExpressions.push({placeholder, latex: match});
-            latexCounter++;
-            return placeholder;
-        });
-    
-        // Parse Markdown
-        let formattedMessage = marked.parse(latexReplacedMessage);
-    
-        // Replace placeholders with rendered LaTeX
-        latexExpressions.forEach(({placeholder, latex}) => {
-            const isDisplay = latex.startsWith('$$');
-            const latexContent = isDisplay ? latex.slice(2, -2) : latex.slice(1, -1);
-            const renderedLatex = katex.renderToString(latexContent, {
-                displayMode: isDisplay,
-                throwOnError: false
-            });
-            formattedMessage = formattedMessage.replace(placeholder, renderedLatex);
-        });
-    
-        return formattedMessage;
+        return tempDiv.innerHTML;
     }
 
     function addCopyButtons() {
