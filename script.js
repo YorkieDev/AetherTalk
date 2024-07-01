@@ -84,56 +84,65 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function addMessage(sender, message) {
         const messageElement = document.createElement('div');
-    messageElement.classList.add('message', `${sender}-message`);
-    messageElement.style.fontSize = `${currentFontSize}px`;
-
-    const emojiSpan = document.createElement('span');
-    emojiSpan.classList.add('message-emoji');
-    emojiSpan.textContent = sender === 'user' ? '👤' : '🤖';
-
-    const messageBubble = document.createElement('div');
-    messageBubble.classList.add('message-bubble');
-
-    const contentDiv = document.createElement('div');
-    contentDiv.classList.add('message-content');
-    contentDiv.innerHTML = formatMessage(message);
-
-    messageBubble.appendChild(contentDiv);
-
-    if (sender === 'bot') {
-        const botMessageContainer = document.createElement('div');
-        botMessageContainer.classList.add('bot-message-container');
-
-        const botContentControls = document.createElement('div');
-        botContentControls.classList.add('bot-content-controls');
-
-        botContentControls.appendChild(messageBubble);
-
-        const ttsControls = document.createElement('div');
-        ttsControls.classList.add('tts-controls');
-        ttsControls.innerHTML = `
-            <button class="tts-button play-pause">
-                <i class="fas fa-play"></i> Speak
-            </button>
-            <button class="tts-button restart" disabled>
-                <i class="fas fa-redo"></i> Restart
-            </button>
-        `;
-        botContentControls.appendChild(ttsControls);
-
-        botMessageContainer.appendChild(emojiSpan);
-        botMessageContainer.appendChild(botContentControls);
-        messageElement.appendChild(botMessageContainer);
-    } else {
-        messageElement.appendChild(messageBubble);
-        messageElement.appendChild(emojiSpan);
-    }
-
-    chatMessages.appendChild(messageElement);
+        messageElement.classList.add('message', `${sender}-message`);
+        messageElement.style.fontSize = `${currentFontSize}px`;
     
+        const emojiSpan = document.createElement('span');
+        emojiSpan.classList.add('message-emoji');
+        emojiSpan.textContent = sender === 'user' ? '👤' : '🤖';
+    
+        const messageBubble = document.createElement('div');
+        messageBubble.classList.add('message-bubble');
+    
+        const contentDiv = document.createElement('div');
+        contentDiv.classList.add('message-content');
+        contentDiv.innerHTML = formatMessage(message);
+    
+        messageBubble.appendChild(contentDiv);
+    
+        if (sender === 'bot') {
+            const botMessageContainer = document.createElement('div');
+            botMessageContainer.classList.add('bot-message-container');
+    
+            const botContentControls = document.createElement('div');
+            botContentControls.classList.add('bot-content-controls');
+    
+            botContentControls.appendChild(messageBubble);
+    
+            const ttsControls = document.createElement('div');
+            ttsControls.classList.add('tts-controls');
+            ttsControls.innerHTML = `
+                <button class="tts-button play-pause">
+                    <i class="fas fa-play"></i> Speak
+                </button>
+                <button class="tts-button restart" disabled>
+                    <i class="fas fa-redo"></i> Restart
+                </button>
+            `;
+            botContentControls.appendChild(ttsControls);
+    
+            botMessageContainer.appendChild(emojiSpan);
+            botMessageContainer.appendChild(botContentControls);
+            messageElement.appendChild(botMessageContainer);
+        } else {
+            messageElement.appendChild(messageBubble);
+            messageElement.appendChild(emojiSpan);
+        }
+    
+        chatMessages.appendChild(messageElement);
+        
         // Add copy buttons and apply syntax highlighting after adding to DOM
         addCopyButtons();
         Prism.highlightAll();
+    
+        // Render any LaTeX in the message
+        renderMathInElement(contentDiv, {
+            delimiters: [
+                {left: "$$", right: "$$", display: true},
+                {left: "$", right: "$", display: false}
+            ],
+            throwOnError: false
+        });
     
         chatMessages.scrollTop = chatMessages.scrollHeight;
     
@@ -170,7 +179,31 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
     
-        return marked.parse(message);
+        // Replace LaTeX expressions with placeholders
+        const latexExpressions = [];
+        let latexCounter = 0;
+        const latexReplacedMessage = message.replace(/\$\$([\s\S]*?)\$\$|\$((?:\\.|[^\$])*)\$/g, (match, display, inline) => {
+            const placeholder = `%%LATEX_${latexCounter}%%`;
+            latexExpressions.push({placeholder, latex: match});
+            latexCounter++;
+            return placeholder;
+        });
+    
+        // Parse Markdown
+        let formattedMessage = marked.parse(latexReplacedMessage);
+    
+        // Replace placeholders with rendered LaTeX
+        latexExpressions.forEach(({placeholder, latex}) => {
+            const isDisplay = latex.startsWith('$$');
+            const latexContent = isDisplay ? latex.slice(2, -2) : latex.slice(1, -1);
+            const renderedLatex = katex.renderToString(latexContent, {
+                displayMode: isDisplay,
+                throwOnError: false
+            });
+            formattedMessage = formattedMessage.replace(placeholder, renderedLatex);
+        });
+    
+        return formattedMessage;
     }
 
     function addCopyButtons() {
