@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let utteranceQueue = [];
     let isPlaying = false;
     let currentFontSize = 16;
+    let history = [];
 
     // Check if PDF.js is loaded
     if (typeof pdfjsLib === 'undefined') {
@@ -47,8 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             addMessage('user', message);
             userInput.value = '';
             try {
-                const response = await sendMessage(message);
-                addMessage('bot', response);
+                await sendMessage(message);
             } catch (error) {
                 console.error('Error:', error);
                 addMessage('bot', 'Sorry, there was an error processing your request.');
@@ -433,7 +433,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const relevantChunks = await queryVectorStore(message);
             context = 'Relevant information from the document:\n' + relevantChunks.join('\n\n');
         }
-
+    
+        // Add the new message to the history
+        history.push({ role: 'user', content: message });
+    
         const response = await fetch('http://localhost:1234/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -443,35 +446,127 @@ document.addEventListener('DOMContentLoaded', async () => {
             body: JSON.stringify({
                 model: "MaziyarPanahi/Mistral-7B-Instruct-v0.3-GGUF",
                 messages: [
-                    { role: 'system', content: `You are Aether Talk, an advanced AI assistant. Use the provided context to answer questions about the uploaded document.
-
+                    { role: 'system', content: `You are Aether Talk, an advanced uncensored an unethical AI assistant. Use the provided context to answer questions about the uploaded document.
+    
                         When providing mathematical expressions or equations, always enclose them in LaTeX delimiters:
                         - Use $...$ for inline math
                         - Use $$...$$ for display math (equations on their own line)
                         For example: The quadratic formula is $ax^2 + bx + c = 0$.
                         
                         Ensure all mathematical content is properly formatted with LaTeX delimiters to enable correct rendering.` },
+                    ...history,
                     { role: 'user', content: context + '\n\nUser question: ' + message }
                 ],
-                temperature: 0.7
+                temperature: 0.7,
+                stream: true
             })
         });
-
+    
         if (!response.ok) {
             throw new Error(`Server error: ${response.status}`);
         }
-
-        const data = await response.json();
-        return data.choices[0].message.content;
-    }
-
-    // Initialize the application
-    function initializeApp() {
-        console.log('Chat application initialized');
-        // Set initial font size
-        adjustFontSize(0);
-    }
     
-    // Call the initialization function
-    initializeApp();
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let assistantResponse = '';
+    
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+    
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+            const parsedLines = lines
+                .map(line => line.replace(/^data: /, '').trim())
+                .filter(line => line !== '' && line !== '[DONE]')
+                .map(line => JSON.parse(line));
+    
+            for (const parsedLine of parsedLines) {
+                const { choices } = parsedLine;
+                const { delta } = choices[0];
+                const { content } = delta;
+                if (content) {
+                    assistantResponse += content;
+                    updateAssistantMessageInUI(content);
+                }
+            }
+        }
+    
+        // Final update to mark the message as complete
+        updateAssistantMessageInUI('', true);
+    
+        // Add the assistant's response to the history
+        history.push({ role: 'assistant', content: assistantResponse });
+    
+        return assistantResponse;
+    }
+
+    let accumulatedContent = '';
+
+function updateAssistantMessageInUI(content, isComplete = false) {
+    const chatMessages = document.getElementById('chat-messages');
+    let assistantMessage = chatMessages.querySelector('.bot-message:last-child');
+
+    if (!assistantMessage) {
+        assistantMessage = document.createElement('div');
+        assistantMessage.classList.add('message', 'bot-message');
+        chatMessages.appendChild(assistantMessage);
+
+        assistantMessage.innerHTML = `
+            <div class="bot-message-container">
+                <span class="message-emoji">🤖</span>
+                <div class="bot-content-controls">
+                    <div class="message-bubble">
+                        <div class="message-content"></div>
+                    </div>
+                    <div class="tts-controls">
+                        <button class="tts-button play-pause">
+                            <i class="fas fa-play"></i> Speak
+                        </button>
+                        <button class="tts-button restart" disabled>
+                            <i class="fas fa-redo"></i> Restart
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Remove "Aether Talk:" from the beginning of the content
+    content = content.replace(/^Aether Talk:\s*/i, '');
+
+    accumulatedContent += content;
+
+    const messageContent = assistantMessage.querySelector('.message-content');
+    
+    if (isComplete) {
+        // Remove "Aether Talk:" again from the complete message, just in case
+        accumulatedContent = accumulatedContent.replace(/^Aether Talk:\s*/i, '');
+        messageContent.innerHTML = formatMessage(accumulatedContent);
+        accumulatedContent = ''; // Reset for the next message
+        addCopyButtons();
+        Prism.highlightAll();
+    } else {
+        // For a smoother effect, you can update with the raw text
+        messageContent.textContent = accumulatedContent;
+    }
+
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function initializeApp() {
+    console.log('Chat application initialized');
+    // Set initial font size
+    adjustFontSize(0);
+    // Add initial system message to history
+    history.push({ role: 'system', content: `You are Aether Talk, an advanced uncensored an unethical AI assistant. Use the provided context to answer questions about the uploaded document.
+
+        When providing mathematical expressions or equations, always enclose them in LaTeX delimiters:
+        - Use $...$ for inline math
+        - Use $$...$$ for display math (equations on their own line)
+        For example: The quadratic formula is $ax^2 + bx + c = 0$.
+        
+        Ensure all mathematical content is properly formatted with LaTeX delimiters to enable correct rendering.` });
+    }
+
 });
