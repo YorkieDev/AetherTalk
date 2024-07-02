@@ -167,11 +167,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     function formatMessage(message) {
         // Protect LaTeX expressions
         const mathExpressions = [];
-        let protectedMessage = message.replace(/\$\$([\s\S]*?)\$\$|\$((?:\\.|[^\$])*)\$/g, (match, display, inline, offset) => {
-            const placeholder = `%%MATH_EXPR_${mathExpressions.length}%%`;
-            mathExpressions.push({placeholder, latex: match});
-            return placeholder;
-        });
+    let protectedMessage = message.replace(/\$\$([\s\S]*?)\$\$|\$((?:\\.|[^\$])*)\$/g, (match, display, inline, offset) => {
+        const placeholder = `%%MATH_EXPR_${mathExpressions.length}%%`;
+        // Extract only the math content from more complex LaTeX structures
+        let latex = match;
+        if (latex.includes('\\begin{document}')) {
+            const mathContent = latex.match(/\\begin\{enumerate\}([\s\S]*?)\\end\{enumerate\}/);
+            if (mathContent) {
+                latex = '$' + mathContent[1].replace(/\\item\s*/g, '') + '$';
+            }
+        }
+        mathExpressions.push({placeholder, latex});
+        return placeholder;
+    });
     
         // Process Markdown
         marked.setOptions({
@@ -202,10 +210,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             strict: false,
             trust: true,
             macros: {
-                "\\quad": "\\;\\;",
-                "\\overset": "\\stackrel",
-                "\\rightarrow": "\\to"
-            }
+        "\\u": "\\mathbf{u}",
+        "\\v": "\\mathbf{v}",
+        "\\w": "\\mathbf{w}"
+    },
+    trust: (context) => ['\\htmlId', '\\href'].includes(context.command),
+    strict: false
         });
     
         return tempDiv.innerHTML;
@@ -433,7 +443,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             body: JSON.stringify({
                 model: "MaziyarPanahi/Mistral-7B-Instruct-v0.3-GGUF",
                 messages: [
-                    { role: 'system', content: 'You are Aether Talk, an advanced AI assistant. Use the provided context to answer questions about the uploaded document.' },
+                    { role: 'system', content: `You are Aether Talk, an advanced AI assistant. Use the provided context to answer questions about the uploaded document.
+
+                        When providing mathematical expressions or equations, always enclose them in LaTeX delimiters:
+                        - Use $...$ for inline math
+                        - Use $$...$$ for display math (equations on their own line)
+                        For example: The quadratic formula is $ax^2 + bx + c = 0$.
+                        
+                        Ensure all mathematical content is properly formatted with LaTeX delimiters to enable correct rendering.` },
                     { role: 'user', content: context + '\n\nUser question: ' + message }
                 ],
                 temperature: 0.7
