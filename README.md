@@ -29,7 +29,7 @@ AetherTalk isn't just another chat interface – it's your portal to the AI univ
 
 ### Prerequisites
 
-- [LM Studio](https://lmstudio.ai/) running and ready to party (Startup server mode, load a Large Language model and an embedding model, and you're ready to go, easy as 1 2 3!)
+- [LM Studio](https://lmstudio.ai/) running and ready to party (Startup server mode, ensure CORS is ON, load a Large Language model and an embedding model, and you're ready to go, easy as 1 2 3!)
 - A web browser (preferably from this century)
 - Basic knowledge of the command line (don't worry, we'll be gentle)
 
